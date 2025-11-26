@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>색상 맞추기 | 시각디자인 훈련소</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="color-page">
+    <h1>🎨 색상 맞추기</h1>
+
+    <!-- 제시 색상 / 내 색상 -->
+    <div class="color-compare">
+      <!-- 제시 색상 -->
+      <div class="color-box-wrapper">
+        <div class="sample-color" id="sampleColor"></div>
+        <button id="changeColorBtn">색상 바꾸기</button>
+      </div>
+
+      <!-- 내 색상 -->
+      <div class="color-box-wrapper">
+        <div class="user-color" id="userColor"></div>
+        <input type="color" id="colorPicker" value="#ffffff">
+      </div>
+    </div>
+
+    <!-- 결과 영역 -->
+    <div class="result-section">
+      <button id="checkResult">결과 확인</button>
+      <p id="resultText"></p>
+      <button id="retryBtn" style="display:none;">다시 하기</button>
+    </div>
+  </div>
+
+  <script src="color-match.js"></script>
+</body>
+</html>

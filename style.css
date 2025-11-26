@@ -1,0 +1,400 @@
+/* 기본 폰트 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  margin: 0;
+  background-color: #ffffff;
+}
+
+/* ------------------------------ */
+/* 🏠 공통 : 홈 버튼 */
+/* ------------------------------ */
+.home-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: #ddd;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.home-btn:hover {
+  background: #ccc;
+}
+
+/* ------------------------------ */
+/* 📌 홈 화면(index.html) */
+/* ------------------------------ */
+
+.home-container {
+  text-align: center;
+  margin-top: 150px;
+}
+
+.title {
+  font-size: 2rem;
+  margin-bottom: 40px;
+}
+
+.menu-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.menu-buttons button {
+  background-color: #ddd;
+  border: none;
+  border-radius: 8px;
+  padding: 15px 25px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.menu-buttons button:hover {
+  background-color: #222;
+  color: white;
+}
+
+/* ------------------------------ */
+/* 🎮 색상 맞추기 모드 선택 페이지 */
+/* ------------------------------ */
+.mode-page {
+  text-align: center;
+  margin-top: 150px;
+}
+
+.mode-buttons {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.mode-buttons button {
+  padding: 15px 25px;
+  font-size: 1.2rem;
+  border-radius: 10px;
+  border: none;
+  background: #222;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.mode-buttons button:hover {
+  background: #444;
+}
+
+/* ------------------------------ */
+/* 🎨 색상 맞추기 페이지 (연습/실전 공통) */
+/* ------------------------------ */
+
+.color-page {
+  text-align: center;
+  background-color: white;
+  padding: 40px;
+  border-radius: 20px;
+  max-width: 600px;
+  margin: 80px auto;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  position: relative;
+}
+
+.color-page h1 {
+  margin-bottom: 30px;
+}
+
+/* ------------------------------ */
+/* 🎯 실전 모드 문제 번호 표시 */
+/* ------------------------------ */
+.quiz-status {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+/* ------------------------------ */
+/* 🎨 제시된 색 */
+/* ------------------------------ */
+.sample-section {
+  margin-bottom: 30px;
+}
+
+.label {
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  color: #444;
+}
+
+.sample-color {
+  width: 150px;
+  height: 150px;
+  border-radius: 10px;
+  border: 2px solid #ccc;
+  margin: 0 auto 12px;
+}
+
+#changeColorBtn {
+  background-color: #f2f2f2;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-size: 0.9rem;
+}
+#changeColorBtn:hover {
+  background-color: #ddd;
+}
+
+/* ------------------------------ */
+/* 🎛 내 색상 선택 */
+/* ------------------------------ */
+.select-section {
+  margin-bottom: 40px;
+}
+
+.user-color {
+  width: 150px;
+  height: 150px;
+  border-radius: 10px;
+  border: 2px solid #ccc;
+  margin: 0 auto 12px;
+}
+
+#colorPicker {
+  display: block;
+  margin: 0 auto;
+  width: 160px;
+  height: 40px;
+  cursor: pointer;
+}
+
+/* ------------------------------ */
+/* ✔ 결과 확인 */
+/* ------------------------------ */
+.result-section {
+  text-align: center;
+}
+
+#checkResult,
+#nextBtn {
+  background-color: #222;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+#checkResult:hover,
+#nextBtn:hover {
+  background-color: #444;
+}
+
+#retryBtn {
+  margin-top: 12px;
+  background-color: #eee;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#retryBtn:hover {
+  background: #ddd;
+}
+
+#resultText {
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+/* ------------------------------ */
+/* 🏁 실전 모드 결과 페이지 */
+/* ------------------------------ */
+.result-page {
+  text-align: center;
+  margin: 60px auto;
+  max-width: 700px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 15px 0;
+  justify-content: center;
+}
+
+.color-box {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  border: 2px solid #ccc;
+}
+
+#finalScore {
+  margin-top: 40px;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+
+.back-btn {
+  position: fixed;
+  top: 20px;
+  left: 80px;
+  background: #eee;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.back-btn:hover {
+  background: #ddd;
+}
+
+
+
+
+
+/* 착시 페이지 */
+/* 착시 페이지 */
+.illusion-page {
+  text-align: center;
+  margin-top: 100px;
+}
+
+/* 그리드 → 완전한 정렬 대신 “자유 배치 느낌” */
+.illusion-grid {
+  margin-top: 40px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* 썸네일: 비율 유지(1.294:1), 크기 더 키움 */
+.illusion-thumb {
+  width: 260px;
+  height: calc(260px / 1.294); /* 비율 유지 */
+  background-size: cover;
+  background-position: center;
+  border-radius: 18px;
+  cursor: pointer;
+
+  /* 떠다니는 느낌 + 약간 랜덤한 rotate */
+  animation: float 3.4s ease-in-out infinite;
+  transform: rotate(var(--rdeg));
+}
+
+/* 둥둥 떠다니기 */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(var(--rdeg)); }
+  50% { transform: translateY(-12px) rotate(var(--rdeg)); }
+}
+
+/* 랜덤 회전 값 추가 */
+.illusion-thumb:nth-child(1) { --rdeg: -3deg; }
+.illusion-thumb:nth-child(2) { --rdeg: 2deg;  }
+.illusion-thumb:nth-child(3) { --rdeg: -1deg; }
+.illusion-thumb:nth-child(4) { --rdeg: 4deg;  }
+.illusion-thumb:nth-child(5) { --rdeg: -2deg; }
+.illusion-thumb:nth-child(6) { --rdeg: 3deg;  }
+
+
+/* 모달 전체 */
+.illusion-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  justify-content: center;
+  align-items: center;
+}
+
+/* 모달 컨텐츠 사이즈 확대 */
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 18px;
+  position: relative;
+  width: 900px;         /* 확장 */
+  text-align: center;
+}
+
+/* 이미지 영역 더 크게 (비율 1.294 유지) */
+.illusion-view {
+  position: relative;
+
+  width: 820px;                            /* 확장 */
+  height: calc(820px / 1.294);             /* 원본 비율 유지 */
+
+  margin: 0 auto 25px;
+  border-radius: 15px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  overflow: hidden;                         /* 튀어나가지 않도록 */
+  background: #f4f4f4;
+}
+
+/* 아래 이미지 */
+.bottom-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 위 이미지 */
+.top-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+
+  /* 기본 위치를 왼쪽 화면 밖으로 보내기 */
+  transform: translateX(-100%);  
+  transition: transform 0.1s linear;
+}
+
+#slider {
+  width: 80%;              /* 슬라이드 여유 증가 */
+  margin-top: 20px;
+}
+
+/* 모달 닫기 버튼 우측 상단 고정 */
+#closeModal {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  font-size: 18px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+#closeModal:hover {
+  background: rgba(0,0,0,0.8);
+}
+
+

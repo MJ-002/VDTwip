@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>패스 맞추기 — 시각디자인 훈련소</title>
+
+<!-- 간단한 스타일 -->
+<style>
+  :root{--ui-bg:#fafafa;--card:#fff;--accent:#222;}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;margin:0;background:var(--ui-bg);color:#111}
+  .wrap{max-width:1200px;margin:28px auto;padding:20px}
+  header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+  header h1{margin:0;font-size:1.25rem}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .controls input[type="text"]{padding:8px 10px;font-size:1rem;width:80px}
+  .controls label{font-size:0.9rem;color:#333}
+  .controls .small{font-size:0.9rem;color:#666}
+  .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+  .stage{display:flex;gap:18px;margin-top:18px}
+  .svg-wrap{background:#fff;padding:12px;border-radius:10px;display:flex;flex-direction:column;align-items:center}
+  svg{background:linear-gradient(180deg,#ffffff, #fbfbfb);border-radius:8px;}
+  .side{flex:0 0 340px}
+  .main{flex:1}
+  .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+  .btn.secondary{background:#eee;color:#111}
+  .row{display:flex;gap:8px;align-items:center;margin-top:8px}
+  #scoreBox{margin-top:12px;font-weight:700}
+  .note{font-size:0.9rem;color:#666;margin-top:8px}
+  .legend{display:flex;gap:12px;margin-top:8px;align-items:center}
+  .legend .dot{width:14px;height:14px;border-radius:50%}
+  .legend .orig{background:#222}
+  .legend .user{background:#dd2b2b}
+  /* draggable point */
+  .pt{cursor:grab}
+  .pt:active{cursor:grabbing}
+  .controls .range{width:140px}
+  footer{margin-top:28px;font-size:0.85rem;color:#666}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>패스 맞추기 — 벡터 편집 연습</h1>
+      <div class="controls">
+        <label>글자</label>
+        <input id="charInput" type="text" maxlength="1" value="A" />
+        <label>사이즈</label>
+        <input id="sizeRange" type="range" min="80" max="420" value="200" class="range" />
+        <span id="sizeVal">200</span> px
+        <button id="loadBtn" class="btn">로드</button>
+        <button id="resetBtn" class="btn secondary">원본 복원</button>
+        <button id="scoreBtn" class="btn">유사도 측정</button>
+      </div>
+    </header>
+
+    <div class="card stage">
+      <div class="main">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div class="svg-wrap card" style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700">원본 (기준)</div>
+              <div class="legend"><div class="dot orig"></div><div class="small">원본 경로</div></div>
+            </div>
+            <div style="height:24px"></div>
+            <div id="origContainer" style="display:flex;justify-content:center;">
+              <!-- 원본 SVG 삽입 -->
+            </div>
+          </div>
+
+          <div class="svg-wrap card" style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700">내가 편집한 것</div>
+              <div class="legend"><div class="dot user"></div><div class="small">편집 경로</div></div>
+            </div>
+            <div style="height:24px"></div>
+            <div id="editContainer" style="display:flex;justify-content:center;">
+              <!-- 편집용 SVG -->
+            </div>
+          </div>
+        </div>
+
+        <div class="note">편집: 빨간 점(노드)을 드래그하세요. 베지어 제어점(핸들)이 있으면 함께 이동합니다. 가까이 붙이면 자동 스냅됩니다.</div>
+      </div>
+
+      <aside class="side">
+        <div class="card">
+          <div style="font-weight:700">도구</div>
+          <div class="row"><button id="addNodeBtn" class="btn secondary">노드 추가</button></div>
+          <div class="row"><button id="toggleHandles" class="btn secondary">핸들 토글</button></div>
+          <div class="row"><button id="downloadSVG" class="btn">SVG 다운로드</button></div>
+          <div id="scoreBox">유사도: -</div>
+          <div class="note">스코어는 원본 노드와 편집 노드의 평균 거리 기반(정규화)입니다.</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>구현: opentype.js로 TTF를 읽어 SVG path로 변환 → 편집 포인트를 직접 드래그 → 스코어 계산</footer>
+  </div>
+
+  <!-- 라이브러리: opentype.js (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+
+  <script>
+/* =========================
+   설정 & 전역 변수
+   ========================= */
+const fontUrl = "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf"; // Roboto TTF (CDN)
+let font = null;
+let currentGlyph = null;
+let currentCommandsOrig = []; // 원본 명령 (deep copy)
+let currentCommandsEdit = []; // 편집용 명령 (mutable)
+let svgSize = { w: 520, h: 400 }; // SVG 뷰박스 사이즈 (동적으로 변경)
+let snapThreshold = 10; // 픽셀 스냅 임계 (px)
+let showHandles = true;
+
+/* 유틸: deep copy of commands */
+function cloneCommands(cmds){
+  return cmds.map(c => Object.assign({}, c));
+}
+
+/* 유틸: convert opentype path.commands -> SVG d string */
+function commandsToD(cmds){
+  let d = "";
+  cmds.forEach(c=>{
+    if(c.type==="M") d += `M ${c.x} ${c.y} `;
+    else if(c.type==="L") d += `L ${c.x} ${c.y} `;
+    else if(c.type==="Q") d += `Q ${c.x1} ${c.y1} ${c.x} ${c.y} `;
+    else if(c.type==="C") d += `C ${c.x1} ${c.y1} ${c.x2} ${c.y2} ${c.x} ${c.y} `;
+    else if(c.type==="Z") d += `Z `;
+  });
+  return d.trim();
+}
+
+/* 유틸: bbox diagonal for normalization */
+function bboxDiagonal(cmds){
+  let xs=[], ys=[];
+  cmds.forEach(c=>{
+    if('x' in c){ xs.push(c.x); ys.push(c.y); }
+    if('x1' in c){ xs.push(c.x1); ys.push(c.y1); }
+    if('x2' in c){ xs.push(c.x2); ys.push(c.y2); }
+  });
+  if(xs.length===0) return 1;
+  const minx=Math.min(...xs), maxx=Math.max(...xs);
+  const miny=Math.min(...ys), maxy=Math.max(...ys);
+  const dx=maxx-minx, dy=maxy-miny;
+  return Math.sqrt(dx*dx + dy*dy) || 1;
+}
+
+/* =========================
+   폰트 로드
+   ========================= */
+opentype.load(fontUrl, (err, f) => {
+  if(err){
+    alert("폰트 로드 실패: " + err);
+    return;
+  }
+  font = f;
+  // 자동 로드 초기 글자
+  document.getElementById("loadBtn").click();
+});
+
+/* =========================
+   UI 엘리먼트 연결
+   ========================= */
+const charInput = document.getElementById("charInput");
+const loadBtn = document.getElementById("loadBtn");
+const sizeRange = document.getElementById("sizeRange");
+const sizeVal = document.getElementById("sizeVal");
+const origContainer = document.getElementById("origContainer");
+const editContainer = document.getElementById("editContainer");
+const scoreBox = document.getElementById("scoreBox");
+const scoreBtn = document.getElementById("scoreBtn");
+const resetBtn = document.getElementById("resetBtn");
+const addNodeBtn = document.getElementById("addNodeBtn");
+const toggleHandles = document.getElementById("toggleHandles");
+const downloadSVG = document.getElementById("downloadSVG");
+
+sizeRange.addEventListener("input", ()=>{ sizeVal.textContent = sizeRange.value; loadGlyph(); });
+
+loadBtn.addEventListener("click", ()=> loadGlyph());
+resetBtn.addEventListener("click", ()=> restoreOriginal());
+scoreBtn.addEventListener("click", ()=> computeScore());
+toggleHandles.addEventListener("click", ()=>{ showHandles = !showHandles; renderEditor(); });
+downloadSVG.addEventListener("click", ()=> downloadEditedSVG());
+
+/* =========================
+   글리프 로드 & SVG 생성
+   ========================= */
+function loadGlyph(){
+  if(!font) return;
+  const ch = (charInput.value || "A").charAt(0);
+  const size = parseInt(sizeRange.value,10) || 200;
+
+  // glyph 가져오기
+  const glyph = font.charToGlyph(ch);
+  const glyphPath = glyph.getPath(0, 0, size); // baseline origin (we'll offset to center)
+  const svgStr = glyphPath.toSVG(); // returns <path d="..."/>
+  // 파싱해서 commands 획득: opentype path.commands available at glyph.getPath...
+  const commands = glyph.getPath(0,0,size).commands; // array of commands with absolute coords
+
+  // normalize: we want to center glyph in an SVG viewBox
+  // compute bbox of commands
+  let xs=[], ys=[];
+  commands.forEach(c=>{
+    if('x' in c){ xs.push(c.x); ys.push(c.y); }
+    if('x1' in c){ xs.push(c.x1); ys.push(c.y1); }
+    if('x2' in c){ xs.push(c.x2); ys.push(c.y2); }
+  });
+  const minx = xs.length? Math.min(...xs) : 0;
+  const maxx = xs.length? Math.max(...xs) : size;
+  const miny = ys.length? Math.min(...ys) : -size;
+  const maxy = ys.length? Math.max(...ys) : size;
+
+  const w = maxx - minx;
+  const h = maxy - miny;
+  const padding = 20;
+  svgSize.w = Math.max(320, Math.ceil(w + padding*2));
+  svgSize.h = Math.max(240, Math.ceil(h + padding*2));
+
+  // offset commands so that glyph bbox is centered within svg viewbox
+  const offsetX = (svgSize.w - w) / 2 - minx;
+  const offsetY = (svgSize.h - h) / 2 - miny;
+
+  // build offset commands
+  const offsetCommands = commands.map(c=>{
+    const nc = Object.assign({}, c);
+    if('x' in nc) nc.x = nc.x + offsetX;
+    if('y' in nc) nc.y = nc.y + offsetY;
+    if('x1' in nc) nc.x1 = nc.x1 + offsetX;
+    if('y1' in nc) nc.y1 = nc.y1 + offsetY;
+    if('x2' in nc) nc.x2 = nc.x2 + offsetX;
+    if('y2' in nc) nc.y2 = nc.y2 + offsetY;
+    return nc;
+  });
+
+  // store
+  currentGlyph = glyph;
+  currentCommandsOrig = cloneCommands(offsetCommands);
+  currentCommandsEdit = cloneCommands(offsetCommands);
+
+  // render SVGs
+  renderOrig();
+  renderEditor();
+  scoreBox.textContent = "유사도: -";
+}
+
+/* =========================
+   렌더 원본 (비교용)
+   ========================= */
+function renderOrig(){
+  origContainer.innerHTML = "";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("width", svgSize.w);
+  svg.setAttribute("height", svgSize.h);
+  svg.setAttribute("viewBox", `0 0 ${svgSize.w} ${svgSize.h}`);
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("d", commandsToD(currentCommandsOrig));
+  path.setAttribute("fill","none");
+  path.setAttribute("stroke","#222");
+  path.setAttribute("stroke-width","2");
+  svg.appendChild(path);
+  origContainer.appendChild(svg);
+}
+
+/* =========================
+   렌더 편집용 SVG + 포인트 UI
+   ========================= */
+function renderEditor(){
+  editContainer.innerHTML = "";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("width", svgSize.w);
+  svg.setAttribute("height", svgSize.h);
+  svg.setAttribute("viewBox", `0 0 ${svgSize.w} ${svgSize.h}`);
+  svg.style.touchAction = "none";
+
+  // 백그라운드 가이드 (겹침 확인용)
+  const bg = document.createElementNS("http://www.w3.org/2000/svg","rect");
+  bg.setAttribute("x",0); bg.setAttribute("y",0);
+  bg.setAttribute("width",svgSize.w); bg.setAttribute("height",svgSize.h);
+  bg.setAttribute("fill","transparent");
+  svg.appendChild(bg);
+
+  // path (user editable)
+  const pathEl = document.createElementNS("http://www.w3.org/2000/svg","path");
+  pathEl.setAttribute("d", commandsToD(currentCommandsEdit));
+  pathEl.setAttribute("fill","none");
+  pathEl.setAttribute("stroke","#dd2b2b");
+  pathEl.setAttribute("stroke-width","2.2");
+  svg.appendChild(pathEl);
+
+  // draw nodes (circles) and handles (lines + small circles)
+  currentCommandsEdit.forEach((c, idx)=>{
+    // draw control handles if exist
+    if(c.type === "C" || c.type==="Q"){
+      if('x1' in c && 'y1' in c){
+        // handle line
+        const hx = c.x1, hy = c.y1, tx = c.x, ty = c.y;
+        const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+        line.setAttribute("x1", hx); line.setAttribute("y1", hy);
+        line.setAttribute("x2", tx); line.setAttribute("y2", ty);
+        line.setAttribute("stroke","#f99"); line.setAttribute("stroke-width",1);
+        if(showHandles) svg.appendChild(line);
+        // handle circle
+        const hcir = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        hcir.setAttribute("cx", hx); hcir.setAttribute("cy", hy);
+        hcir.setAttribute("r", 6); hcir.setAttribute("fill","#ffb3b3");
+        hcir.setAttribute("stroke","#ff6b6b"); hcir.setAttribute("stroke-width",1);
+        hcir.classList.add("pt"); hcir.dataset.cmd = idx; hcir.dataset.key = "h1";
+        if(showHandles) svg.appendChild(hcir);
+
+        // C has second handle (x2,y2)
+        if(c.type==="C" && 'x2' in c && 'y2' in c){
+          const hx2 = c.x2, hy2 = c.y2;
+          const line2 = document.createElementNS("http://www.w3.org/2000/svg","line");
+          line2.setAttribute("x1", hx2); line2.setAttribute("y1", hy2);
+          line2.setAttribute("x2", c.x); line2.setAttribute("y2", c.y);
+          line2.setAttribute("stroke","#f99"); line2.setAttribute("stroke-width",1);
+          if(showHandles) svg.appendChild(line2);
+
+          const hcir2 = document.createElementNS("http://www.w3.org/2000/svg","circle");
+          hcir2.setAttribute("cx", hx2); hcir2.setAttribute("cy", hy2);
+          hcir2.setAttribute("r", 6); hcir2.setAttribute("fill","#ffb3b3");
+          hcir2.setAttribute("stroke","#ff6b6b"); hcir2.setAttribute("stroke-width",1);
+          hcir2.classList.add("pt"); hcir2.dataset.cmd = idx; hcir2.dataset.key = "h2";
+          if(showHandles) svg.appendChild(hcir2);
+        }
+      }
+    }
+
+    // draw main anchor point (for M, L, Q, C)
+    if('x' in c && 'y' in c){
+      const cir = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      cir.setAttribute("cx", c.x); cir.setAttribute("cy", c.y);
+      cir.setAttribute("r", 6); cir.setAttribute("fill","#ff6b6b");
+      cir.setAttribute("stroke","#7a1a1a"); cir.setAttribute("stroke-width",1);
+      cir.classList.add("pt"); cir.dataset.cmd = idx; cir.dataset.key = "pt";
+      svg.appendChild(cir);
+    }
+  });
+
+  // attach pointer listeners for dragging points
+  svg.addEventListener("pointerdown", onPointerDown);
+  svg.addEventListener("pointermove", onPointerMove);
+  svg.addEventListener("pointerup", onPointerUp);
+  svg.addEventListener("pointerleave", onPointerUp);
+
+  editContainer.appendChild(svg);
+
+  // store references
+  svg._pathEl = pathEl;
+}
+
+/* =========================
+   Drag logic for points
+   ========================= */
+let dragging = null; // {svg, el, cmdIndex, key, startX, startY, orig}
+function getSvgPoint(svg, clientX, clientY){
+  const pt = svg.createSVGPoint();
+  pt.x = clientX; pt.y = clientY;
+  const ctm = svg.getScreenCTM().inverse();
+  const sp = pt.matrixTransform(ctm);
+  return sp;
+}
+
+function onPointerDown(e){
+  if(!e.target.classList.contains("pt")) return;
+  const svg = e.currentTarget;
+  const el = e.target;
+  const cmdIndex = parseInt(el.dataset.cmd,10);
+  const key = el.dataset.key; // 'pt' or 'h1' or 'h2'
+  const sp = getSvgPoint(svg, e.clientX, e.clientY);
+  dragging = { svg, el, cmdIndex, key, startX: sp.x, startY: sp.y,
+               orig: JSON.parse(JSON.stringify(currentCommandsEdit[cmdIndex])) };
+  el.setPointerCapture(e.pointerId);
+}
+
+function onPointerMove(e){
+  if(!dragging) return;
+  const svg = dragging.svg;
+  const sp = getSvgPoint(svg, e.clientX, e.clientY);
+  let dx = sp.x - dragging.startX;
+  let dy = sp.y - dragging.startY;
+
+  const cmd = currentCommandsEdit[dragging.cmdIndex];
+  // update coords depending on key
+  if(dragging.key === "pt"){
+    // move anchor and also move its handles proportionally
+    if('x' in cmd) cmd.x = dragging.orig.x + dx;
+    if('y' in cmd) cmd.y = dragging.orig.y + dy;
+    if('x1' in cmd) cmd.x1 = dragging.orig.x1 + dx;
+    if('y1' in cmd) cmd.y1 = dragging.orig.y1 + dy;
+    if('x2' in cmd) cmd.x2 = dragging.orig.x2 + dx;
+    if('y2' in cmd) cmd.y2 = dragging.orig.y2 + dy;
+  } else if(dragging.key === "h1"){
+    cmd.x1 = dragging.orig.x1 + dx;
+    cmd.y1 = dragging.orig.y1 + dy;
+  } else if(dragging.key === "h2"){
+    cmd.x2 = dragging.orig.x2 + dx;
+    cmd.y2 = dragging.orig.y2 + dy;
+  }
+
+  // snapping: compare against all other anchor/handle points
+  const allPoints = [];
+  currentCommandsEdit.forEach((c, i)=>{
+    if('x' in c && 'y' in c) allPoints.push({x:c.x,y:c.y, i, key:'pt'});
+    if('x1' in c && 'y1' in c) allPoints.push({x:c.x1,y:c.y1, i, key:'h1'});
+    if('x2' in c && 'y2' in c) allPoints.push({x:c.x2,y:c.y2, i, key:'h2'});
+  });
+
+  // find nearest point to snap to (excluding same point)
+  let nearest = null, minDist = Infinity;
+  const currentPt = (function(){ 
+    const c = currentCommandsEdit[dragging.cmdIndex];
+    if(dragging.key==='pt') return {x:c.x,y:c.y};
+    if(dragging.key==='h1') return {x:c.x1,y:c.y1};
+    if(dragging.key==='h2') return {x:c.x2,y:c.y2};
+    return null;
+  })();
+
+  allPoints.forEach(p=>{
+    if(p.i === dragging.cmdIndex && ((dragging.key==='pt' && p.key==='pt') || (dragging.key==='h1' && p.key==='h1') || (dragging.key==='h2' && p.key==='h2'))) return;
+    const d = Math.hypot(p.x - currentPt.x, p.y - currentPt.y);
+    if(d < minDist){ minDist = d; nearest = p; }
+  });
+
+  if(minDist < snapThreshold){
+    // snap
+    if(dragging.key==='pt'){ cmd.x = nearest.x; cmd.y = nearest.y; }
+    else if(dragging.key==='h1'){ cmd.x1 = nearest.x; cmd.y1 = nearest.y; }
+    else if(dragging.key==='h2'){ cmd.x2 = nearest.x; cmd.y2 = nearest.y; }
+  }
+
+  // update rendering
+  renderEditor();
+}
+
+function onPointerUp(e){
+  if(!dragging) return;
+  try{ dragging.el.releasePointerCapture && dragging.el.releasePointerCapture(e.pointerId); }catch(e){}
+  dragging = null;
+}
+
+/* =========================
+   복원 / 스코어 / 다운로드
+   ========================= */
+function restoreOriginal(){
+  currentCommandsEdit = cloneCommands(currentCommandsOrig);
+  renderEditor();
+  scoreBox.textContent = "유사도: -";
+}
+
+function computeScore(){
+  if(!currentCommandsOrig.length || !currentCommandsEdit.length) return;
+  // find corresponding anchor points sequence (by index).
+  // For simplicity, we compare coordinates of commands with same type and position in array.
+  let pairs = [];
+  for(let i=0;i<currentCommandsOrig.length;i++){
+    const o = currentCommandsOrig[i], e = currentCommandsEdit[i];
+    if(!o || !e) continue;
+    // compare anchor if exist
+    if('x' in o && 'x' in e){
+      const d = Math.hypot(o.x - e.x, o.y - e.y);
+      pairs.push(d);
+    }
+    // control1
+    if('x1' in o && 'x1' in e){
+      const d1 = Math.hypot(o.x1 - e.x1, o.y1 - e.y1);
+      pairs.push(d1);
+    }
+    // control2
+    if('x2' in o && 'x2' in e){
+      const d2 = Math.hypot(o.x2 - e.x2, o.y2 - e.y2);
+      pairs.push(d2);
+    }
+  }
+  if(pairs.length===0){ scoreBox.textContent = "유사도: -"; return; }
+  const avg = pairs.reduce((a,b)=>a+b,0)/pairs.length;
+  const norm = bboxDiagonal(currentCommandsOrig);
+  const similarity = Math.max(0, (1 - (avg / norm)) * 100);
+  scoreBox.textContent = `유사도: ${similarity.toFixed(1)} %`;
+  return similarity;
+}
+
+function downloadEditedSVG(){
+  // build svg string from currentCommandsEdit
+  const d = commandsToD(currentCommandsEdit);
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize.w}" height="${svgSize.h}" viewBox="0 0 ${svgSize.w} ${svgSize.h}"><path d="${d}" fill="none" stroke="#000"/></svg>`;
+  const blob = new Blob([svgStr], {type:"image/svg+xml"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "edited.svg";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* =========================
+   노드 추가 (간단 구현: 마지막 명령 뒤에 L)
+   ========================= */
+addNodeBtn.addEventListener("click", ()=>{
+  // find last command that has x,y
+  let lastIdx = -1;
+  for(let i=currentCommandsEdit.length-1;i>=0;i--){
+    if('x' in currentCommandsEdit[i]){ lastIdx = i; break; }
+  }
+  if(lastIdx === -1) return;
+  const last = currentCommandsEdit[lastIdx];
+  const newCmd = { type:"L", x: last.x + 20, y: last.y + 0 }; // simple placement
+  currentCommandsEdit.splice(lastIdx+1,0,newCmd);
+  renderEditor();
+});
+
+/* =========================
+   초기화: set default size display
+   ========================= */
+sizeVal.textContent = sizeRange.value;
+
+  </script>
+</body>
+</html>
